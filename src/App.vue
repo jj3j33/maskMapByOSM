@@ -1,58 +1,61 @@
 <template>
   <div class="home row no-gutters">
-    <div class="col-sm-3">
+    <div class="maskRule" :style="{transform : ruleScale}">
+      <img src="./images/maskRule.jpg" alt="口罩購買規則">
+      <button @click="ruleScale = 'scale(0)'">X</button>
+    </div>
+    <div class="col-md-3">
       <div v-if="cityName.length" class="toolbox">
-        <div class="sticky-top bg-white shadow-sm p-2">
+        <div class="sticky-top text-white shadow-sm p-3 cityName">
+          <h4>{{ today.year }}年{{ today.month }}月{{ today.day }}日 {{ daylist[today.whatday] }}</h4>
+          <h5 class="ruleTitle"><a @click="ruleScale = 'scale(1)'">點我看口罩購買規則</a></h5>
           <div class="form-group d-flex">
-            <label for="cityName" class="mr-2 col-form-label text-right">縣市</label>
-            <div class="flex-fill">
-              <select id="cityName" class="form-control"
-              v-model="select.city" @change="select.area = ''">
-                <option value="">-- Select One --</option>
-                <option :value="c.CityName" v-for="c in cityName" :key="c.CityName">
-                  {{ c.CityName }}
-                </option>
-              </select>
-            </div>
+            <select id="cityName" class="form-control mr-2 rounded-lg selCity"
+            v-model="select.city" @change="select.area = ''">
+              <option value="">-請選擇-</option>
+              <option :value="c.CityName" v-for="c in cityName" :key="c.CityName">
+                {{ c.CityName }}
+              </option>
+            </select>
+            <select id="area" class="form-control ml-2 rounded-lg selCity" v-if="select.city.length"
+              v-model="select.area" @change="updateSelect">
+              <option value="">-請選擇-</option>
+              <option :value="a.AreaName"
+                v-for="a in cityName.find((city) => city.CityName === select.city).AreaList"
+                :key="a.AreaName">
+                {{ a.AreaName }}
+              </option>
+            </select>
           </div>
-          <div class="form-group d-flex">
-            <label for="area" class="mr-2 col-form-label text-right">地區</label>
-            <div class="flex-fill">
-              <select id="area" class="form-control" v-if="select.city.length"
-                v-model="select.area" @change="updateSelect">
-                <option value="">-- Select One --</option>
-                <option :value="a.AreaName"
-                  v-for="a in cityName.find((city) => city.CityName === select.city).AreaList"
-                  :key="a.AreaName">
-                  {{ a.AreaName }}
-                </option>
-              </select>
-            </div>
-          </div>
-          <p class="mb-0 small text-muted text-right">請先選擇區域查看（綠色表示還有口罩）</p>
         </div>
 
         <ul class="list-group">
           <template v-for="(item, key) in data">
-            <a class="list-group-item text-left" :key="key"
+            <a class="list-group-item text-left mx-2 my-1 rounded-lg" :key="key"
               v-if="item.properties.county === select.city
                 && item.properties.town === select.area"
               :class="{ 'highlight': item.properties.mask_adult || item.properties.mask_child}"
               @click="penTo(item)">
-              <h3>{{ item.properties.name }}</h3>
-              <p class="mb-0">
-                成人口罩：{{ item.properties.mask_adult}} | 兒童口罩：{{ item.properties.mask_child}}
-              </p>
-              <p class="mb-0">地址：<a :href="`https://www.google.com.tw/maps/place/${item.properties.address}`"
-                target="_blank" title="Google Map">
-                {{ item.properties.address }}</a>
-              </p>
+              <h5>{{ item.properties.name }}</h5>
+              <h6><a :href="`https://www.google.com.tw/maps/place/${item.properties.address}`"
+                target="_blank" title="Open By Google Map">
+                {{ item.properties.address }}</a></h6>
+              <h6>{{ item.properties.phone }}</h6>
+              <h6>{{ item.properties.note }}</h6>
+              <div class="maskAmount">
+                <button class="btn btn-dark rounded-pill">
+                成人口罩{{ item.properties.mask_adult}}
+                </button>
+                <button class="btn btn-info rounded-pill">
+                兒童口罩{{ item.properties.mask_child}}
+                </button>
+              </div>
             </a>
           </template>
         </ul>
       </div>
     </div>
-    <div class="col-sm-9">
+    <div class="col-md-9">
       <div id="map"></div>
     </div>
   </div>
@@ -82,15 +85,25 @@ const icons = {
   }),
 };
 
+// const markers = new L.MarkerClusterGroup().addTo(osmMap);
+// osmMap.addLayer(markers);
+
 const osm = {
   addMapMarker(x, y, item) {
     const icon = item.mask_adult || item.mask_child ? icons.green : icons.grey;
     L.marker([y, x], {
       icon,
-    }).addTo(osmMap).bindPopup(`<strong>${item.name}</strong> <br>
-    口罩剩餘：<strong>成人 - ${item.mask_adult ? `${item.mask_adult} 個` : '未取得資料'}/ 兒童 - ${item.mask_child ? `${item.mask_child} 個` : '未取得資料'}</strong><br>
-    地址: <a href="https://www.google.com.tw/maps/place/${item.address}" target="_blank">${item.address}</a><br>
-    電話: ${item.phone}<br>
+    }).addTo(osmMap).bindPopup(`<h5>${item.name}</h5>
+    <h6><a href="https://www.google.com.tw/maps/place/${item.address}" target="_blank">${item.address}</a></h6>
+    <h6>${item.phone}</h6>
+    <div class="maskAmount">
+                <button class="btn btn-dark rounded-pill">
+                成人${item.mask_adult}
+                </button>
+                <button class="btn btn-info rounded-pill">
+                兒童${item.mask_child}
+                </button>
+              </div>
     <small>最後更新時間: ${item.updated}</small>`);
   },
   removeMapMarker() {
@@ -105,13 +118,22 @@ const osm = {
     osmMap.panTo(new L.LatLng(y, x));
     L.marker([y, x], {
       icon,
-    }).addTo(osmMap).bindPopup(`<strong>${item.name}</strong> <br>
-    口罩剩餘：<strong>成人 - ${item.mask_adult ? `${item.mask_adult} 個` : '未取得資料'}/ 兒童 - ${item.mask_child ? `${item.mask_child} 個` : '未取得資料'}</strong><br>
-    地址: <a href="https://www.google.com.tw/maps/place/${item.address}" target="_blank">${item.address}</a><br>
-    電話: ${item.phone}<br>
+    }).addTo(osmMap).bindPopup(`<h5>${item.name}</h5>
+    <h6><a href="https://www.google.com.tw/maps/place/${item.address}" target="_blank">${item.address}</a></h6>
+    <h6>${item.phone}</h6>
+    <div class="maskAmount">
+                <button class="btn btn-dark rounded-pill">
+                成人${item.mask_adult}
+                </button>
+                <button class="btn btn-info rounded-pill">
+                兒童${item.mask_child}
+                </button>
+              </div>
     <small>最後更新時間: ${item.updated}</small>`).openPopup();
   },
 };
+
+const Today = new Date();
 
 export default {
   name: 'home',
@@ -120,9 +142,17 @@ export default {
     data: {},
     osmMap: {},
     select: {
-      city: '臺北市',
-      area: '大安區',
+      city: '高雄市',
+      area: '鼓山區',
     },
+    today: {
+      year: Today.getFullYear(),
+      month: Today.getMonth() + 1,
+      day: Today.getDate(),
+      whatday: Today.getDay(),
+    },
+    daylist: ['星期日', '星期一', '星期二', ' 星期三', '星期四', '星期五', '星期六'],
+    ruleScale: 'scale(0)',
   }),
   methods: {
     updateMarker() {
@@ -180,25 +210,127 @@ export default {
 
 <style lang="scss">
 @import 'bootstrap/scss/bootstrap';
+@import url("https://fonts.googleapis.com/css?family=Noto+Sans+TC&display=swap");
+
+* {
+  font-family: 'Noto Sans TC', sans-serif;
+}
 
 #map {
   height: 100vh;
 }
 
 .home {
+  height: 100vh;
   position: relative;
 }
 
 .highlight {
-  background: #e9ffe3;
+  background: #ddfffa;
 }
 
 .toolbox {
   height: 100vh;
-  overflow-y: auto;
+}
 
+.cityName {
+  height: 25%;
+  background-color: rgb(108, 203, 206);
+}
+
+.selCity,
+.selCity option,
+.selCity:focus {
+  color: #a0a0a0;
+}
+
+.selCity:focus {
+  outline: none;
+}
+
+.list-group {
+  height: 75%;
+  overflow-y: auto;
   a {
     cursor: pointer;
+    text-decoration: none;
+  }
+}
+
+.maskAmount {
+  display: flex;
+  button {
+    width: 50%;
+    box-sizing: border-box;
+    margin: 3px;
+  }
+}
+
+.maskAmount button {
+  color: #fff;
+}
+
+.ruleTitle{
+  text-decoration: underline;
+  a:hover{
+    color: rgb(82, 133, 133);
+    cursor: pointer;
+  }
+}
+
+.maskRule {
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, .7);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1030;
+  transition: .5s;
+  :focus{
+    outline: none;
+  }
+  img {
+    width: 400px;
+    height: 600px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+  }
+  button {
+    width: 50px;
+    height: 50px;
+    font-size: 48px;
+    color: #fff;
+    background: transparent;
+    border: none;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .col-md-3{
+    height: 25%;
+    .toolbox {
+      height: 100%;
+      .cityName {
+        height: 100%;
+      }
+      .list-group {
+        height: 0;
+      }
+    }
+  }
+  .col-md-9{
+    height: 75%;
+    #map {
+      height: 100%;
+    }
   }
 }
 </style>
